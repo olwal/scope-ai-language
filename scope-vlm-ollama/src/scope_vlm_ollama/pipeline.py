@@ -5,35 +5,13 @@ from typing import TYPE_CHECKING
 import torch
 
 from scope.core.pipelines.interface import Pipeline, Requirements
-from scope_bus import PromptInjector, UDPReceiver, UDPSender, normalize_input, render_text_overlay
+from scope_bus import PromptInjector, UDPReceiver, UDPSender, apply_overlay_from_kwargs, normalize_input, render_text_overlay
 from scope_language import OllamaVLM
 
 from .schema import VLMOllamaConfig, VLMOllamaPostConfig, VLMOllamaPreConfig
 
 if TYPE_CHECKING:
     from scope.core.pipelines.base_schema import BasePipelineConfig
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def _apply_overlay(frames: torch.Tensor, text: str, kwargs: dict) -> torch.Tensor:
-    return render_text_overlay(
-        frames,
-        text=text,
-        font_family=kwargs.get("font_family", "arial"),
-        font_size=kwargs.get("font_size", 24),
-        font_color=(
-            kwargs.get("font_color_r", 1.0),
-            kwargs.get("font_color_g", 1.0),
-            kwargs.get("font_color_b", 1.0),
-        ),
-        opacity=kwargs.get("text_opacity", 1.0),
-        position=kwargs.get("text_position", "bottom-left"),
-        word_wrap=kwargs.get("word_wrap", True),
-        bg_opacity=kwargs.get("bg_opacity", 0.5),
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -78,11 +56,16 @@ class VLMOllamaPipeline(Pipeline):
         response_text = self._vlm.get_last_response()
 
         if kwargs.get("overlay_enabled", True) and response_text:
-            frames = _apply_overlay(frames, response_text, kwargs)
+            frames = apply_overlay_from_kwargs(frames, response_text, kwargs)
 
         output = {"video": frames.clamp(0, 1)}
         if kwargs.get("inject_prompt", True):
-            self._prompt.inject_if_new(output, response_text, kwargs.get("prompt_weight", 100.0))
+            self._prompt.inject_if_new(
+                output, response_text,
+                weight=kwargs.get("prompt_weight", 100.0),
+                transition_steps=kwargs.get("transition_steps", 0),
+                interpolation_method=kwargs.get("interpolation_method", "slerp"),
+            )
         return output
 
 
@@ -106,8 +89,9 @@ class VLMOllamaPrePipeline(Pipeline):
             url=kwargs.get("ollama_url", "http://localhost:11434"),
             model=kwargs.get("ollama_model", "llava:7b"),
         )
-        self._udp = UDPSender(port=kwargs.get("udp_port", 9400))
+        self._udp = UDPSender(port=kwargs.get("udp_port", 9500))
         self._prompt = PromptInjector()
+        self._last_sent_prompt: str = ""  # captured at query time for the UDP callback
 
     def prepare(self, **kwargs) -> Requirements:
         return Requirements(input_size=1)
@@ -123,9 +107,12 @@ class VLMOllamaPrePipeline(Pipeline):
 
         interval = kwargs.get("send_interval", 3.0)
         if self._vlm.should_send(interval):
+            self._last_sent_prompt = kwargs.get(
+                "vlm_prompt", "Describe what you see in this image in one sentence."
+            )
             self._vlm.query_async(
                 frames[0],
-                prompt=kwargs.get("vlm_prompt", "Describe what you see in this image in one sentence."),
+                prompt=self._last_sent_prompt,
                 callback=self._on_vlm_response,
             )
 
@@ -133,12 +120,18 @@ class VLMOllamaPrePipeline(Pipeline):
 
         output = {"video": frames.clamp(0, 1)}
         if kwargs.get("inject_prompt", True):
-            self._prompt.inject_if_new(output, response_text, kwargs.get("prompt_weight", 100.0))
+            self._prompt.inject_if_new(
+                output, response_text,
+                weight=kwargs.get("prompt_weight", 100.0),
+                transition_steps=kwargs.get("transition_steps", 0),
+                interpolation_method=kwargs.get("interpolation_method", "slerp"),
+            )
         return output
 
     def _on_vlm_response(self, text: str) -> None:
-        self._udp.send(text)
-        print(f"[VLM-PRE] UDP sent ({len(text)} bytes) → port {self._udp.port}", flush=True)
+        # Send both the question and answer so the postprocessor can display both
+        self._udp.send({"prompt": self._last_sent_prompt, "response": text})
+        print(f"[VLM-PRE] UDP sent ({len(text)} chars) → port {self._udp.port}", flush=True)
 
 
 # ---------------------------------------------------------------------------
@@ -157,8 +150,9 @@ class VLMOllamaPostPipeline(Pipeline):
             device if device is not None
             else torch.device("cuda" if torch.cuda.is_available() else "cpu")
         )
-        self._last_text: str = ""
-        self._udp = UDPReceiver(port=kwargs.get("udp_port", 9400))
+        self._last_prompt: str = ""
+        self._last_response: str = ""
+        self._udp = UDPReceiver(port=kwargs.get("udp_port", 9500))
 
     def prepare(self, **kwargs) -> Requirements:
         return Requirements(input_size=1)
@@ -172,13 +166,31 @@ class VLMOllamaPostPipeline(Pipeline):
 
         frames = normalize_input(video, self.device)
 
-        # Check for new UDP message
+        # Check for new UDP message — may be a JSON dict {prompt, response} or plain string
         msg = self._udp.poll()
-        if msg is not None:
-            self._last_text = msg
+        if isinstance(msg, dict):
+            self._last_prompt = msg.get("prompt", "")
+            self._last_response = msg.get("response", "")
+        elif isinstance(msg, str):
+            self._last_response = msg
 
-        if kwargs.get("overlay_enabled", True) and self._last_text:
-            frames = _apply_overlay(frames, self._last_text, kwargs)
+        if kwargs.get("overlay_enabled", True):
+            # Prompt question at the top (dimmer, smaller)
+            if self._last_prompt:
+                frames = render_text_overlay(
+                    frames,
+                    text=self._last_prompt,
+                    font_family=kwargs.get("font_family", "arial"),
+                    font_size=max(8, kwargs.get("font_size", 24) - 6),
+                    font_color=(0.7, 0.85, 1.0),  # light blue — visually distinct from response
+                    opacity=kwargs.get("text_opacity", 1.0) * 0.75,
+                    position="top-left",
+                    word_wrap=True,
+                    bg_opacity=kwargs.get("bg_opacity", 0.5),
+                )
+            # VLM response at the bottom (full size, full opacity)
+            if self._last_response:
+                frames = apply_overlay_from_kwargs(frames, self._last_response, kwargs)
 
         return {"video": frames.clamp(0, 1)}
 

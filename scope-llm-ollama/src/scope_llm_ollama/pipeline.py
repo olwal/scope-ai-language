@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import torch
 
 from scope.core.pipelines.interface import Pipeline, Requirements
-from scope_bus import PromptInjector, UDPSender, normalize_input, render_text_overlay
+from scope_bus import PromptInjector, UDPSender, apply_overlay_from_kwargs, normalize_input
 from scope_language import OllamaLLM
 
 from .schema import LLMOllamaConfig
@@ -58,29 +58,18 @@ class LLMOllamaPipeline(Pipeline):
 
         response_text = self._llm.get_last_response()
 
-        # Overlay
         if kwargs.get("overlay_enabled", True) and response_text:
-            frames = render_text_overlay(
-                frames,
-                text=response_text,
-                font_family=kwargs.get("font_family", "arial"),
-                font_size=kwargs.get("font_size", 24),
-                font_color=(
-                    kwargs.get("font_color_r", 1.0),
-                    kwargs.get("font_color_g", 1.0),
-                    kwargs.get("font_color_b", 0.7),
-                ),
-                opacity=kwargs.get("text_opacity", 1.0),
-                position=kwargs.get("text_position", "bottom-left"),
-                word_wrap=kwargs.get("word_wrap", True),
-                bg_opacity=kwargs.get("bg_opacity", 0.5),
-            )
+            frames = apply_overlay_from_kwargs(frames, response_text, kwargs)
 
         output = {"video": frames.clamp(0, 1)}
 
-        # Inject prompt
         if kwargs.get("inject_prompt", True):
-            self._prompt.inject_if_new(output, response_text, kwargs.get("prompt_weight", 100.0))
+            self._prompt.inject_if_new(
+                output, response_text,
+                weight=kwargs.get("prompt_weight", 100.0),
+                transition_steps=kwargs.get("transition_steps", 0),
+                interpolation_method=kwargs.get("interpolation_method", "slerp"),
+            )
 
         return output
 

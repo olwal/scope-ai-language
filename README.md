@@ -4,7 +4,124 @@ Generative AI plugins for language-driven, real-time video inference and generat
 
 ---
 
-## Architecture Overview
+## Plugins
+
+### scope-vlm-ollama
+
+Queries an Ollama vision model on live video. Available as three variants:
+
+| Pipeline | Role | Description |
+|---|---|---|
+| **VLM Ollama** | Main | Query VLM + overlay response + inject prompt |
+| **VLM Ollama (Pre)** | Preprocessor | Query VLM + inject prompt + broadcast via UDP |
+| **VLM Ollama (Post)** | Postprocessor | Receive UDP text + overlay on AI output |
+
+**Typical chain:** `[VLM Pre] → [AI Model] → [VLM Post]`
+
+The Pre queries the raw camera feed; the Post overlays the description on the AI-processed output.
+
+**Key settings:**
+- `ollama_url` / `ollama_model` — load-time connection config
+- `vlm_prompt` — question sent to the VLM with each frame
+- `send_interval` — seconds between VLM queries (VLM is slow; 3–10s typical)
+- `inject_prompt` / `prompt_weight` — whether to use the VLM response as a diffusion prompt
+- `transition_steps` — frames to blend from current to new prompt (0 = instant)
+- `udp_port` — channel for Pre→Post communication (Pre/Post only)
+
+---
+
+### scope-llm-ollama
+
+Sends text to an Ollama LLM and injects the response as a diffusion prompt.
+
+**Role:** Preprocessor
+
+**Use case:** Transform a simple input phrase into an elaborate scene description, style directive, or creative prompt. Works well chained before any image generation model.
+
+**Key settings:**
+- `system_prompt` — LLM personality / rewriting instruction
+- `input_prompt` — the text fed to the LLM each interval
+- `send_interval` — query frequency
+- `inject_prompt` — send LLM response downstream as a diffusion prompt
+- `udp_enabled` / `udp_port` — optionally broadcast LLM response to other plugins
+
+---
+
+### scope-udp-prompt
+
+Receives text via UDP and injects it as a diffusion prompt.
+
+**Role:** Preprocessor
+
+**Use case:** Bridge any external application into Scope's prompt chain. Send prompts from a Python script, a custom controller, or any other tool that can send UDP packets.
+
+**Key settings:**
+- `udp_port` — channel to listen on (load-time)
+- `prompt_weight` — weight of injected prompt
+- `transition_steps` — frames to blend from current to new prompt (0 = instant)
+- `overlay_enabled` — show received text on video (yellow, top-left) for monitoring
+
+**Sending from Python:**
+```python
+import socket
+
+MULTICAST_GROUP = "239.255.42.99"
+PORT = 9400
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 1)
+sock.sendto("a moonlit forest, painterly".encode(), (MULTICAST_GROUP, PORT))
+```
+
+---
+
+### scope-osc-prompt
+
+Receives OSC `/prompt` messages and injects the text as a diffusion prompt.
+
+**Role:** Preprocessor
+
+**Use case:** Integrate Scope with TouchDesigner, Ableton Live, Max/MSP, or any other tool that sends OSC. Send a string to `/prompt` on the configured port and it becomes the active diffusion prompt.
+
+**Key settings:**
+- `osc_port` — UDP port to listen for OSC messages (load-time, default 9000)
+- `prompt_weight` — weight of injected prompt
+- `transition_steps` — frames to blend from current to new prompt (0 = instant)
+- `overlay_enabled` — show received text on video (yellow, top-left) for monitoring
+
+**Sending from TouchDesigner / Python:**
+```python
+from pythonosc.udp_client import SimpleUDPClient
+
+client = SimpleUDPClient("127.0.0.1", 9000)
+client.send_message("/prompt", "a misty forest at dawn, painterly")
+```
+
+---
+
+### scope-test-text-log
+
+Debug postprocessor that overlays all pipeline kwargs on the video and prints them to stdout. Shows video shape, prompts, UDP messages, and any extra kwargs flowing through the chain.
+
+**Role:** Postprocessor
+**Use case:** Drop this at the end of any chain to inspect exactly what's flowing between stages.
+
+---
+
+## Installation
+
+Dependencies must be installed before the plugins that use them. Via the Scope UI (installs into the correct venv):
+
+1. `scope-bus`
+2. `scope-language`
+3. `scope-vlm-ollama`, `scope-llm-ollama`, `scope-udp-prompt`, `scope-osc-prompt`
+4. `scope-test-text-log`
+
+After installing `scope-bus` and `scope-language`, they appear in the Scope UI pipeline list as passthrough pipelines — confirming installation and allowing uninstall via the UI.
+
+---
+
+## Architecture
 
 ```
 scope-bus          ← shared transport + rendering library
@@ -13,14 +130,14 @@ scope-language     ← Ollama VLM/LLM clients (depends on scope-bus)
 scope-vlm-ollama   ← vision language model pipeline (depends on scope-language)
 scope-llm-ollama   ← text language model pipeline (depends on scope-language)
 scope-udp-prompt   ← receive UDP text → inject as prompt (depends on scope-bus)
+scope-osc-prompt   ← receive OSC /prompt → inject as prompt (depends on scope-bus)
 
-scope-test-text-generator  ← test: rolling counter sender
-scope-test-text-log        ← test: debug overlay postprocessor
+scope-test-text-log  ← debug: overlay postprocessor
 ```
 
 ### Pipeline Types
 
-Scope supports three pipeline roles. Each plugin declares its role in `schema.py`:
+Scope supports three pipeline roles, declared in each plugin's `schema.py`:
 
 | Role | `usage =` | Runs | Typical use |
 |---|---|---|---|
@@ -48,26 +165,31 @@ Transport, rendering, and frame utilities. All other plugins depend on this.
 
 ```python
 from scope_bus import (
-    UDPSender,          # send text via UDP multicast
-    UDPReceiver,        # receive text via UDP multicast
-    render_text_overlay,# draw text onto (T, H, W, C) tensors
-    normalize_input,    # list[Tensor] → (T, H, W, C) float32 [0,1]
-    tensor_to_pil,      # (H, W, C) tensor → PIL Image
-    PromptInjector,     # dedup-append prompts to output dict
+    UDPSender,                 # send text/dict via UDP multicast
+    UDPReceiver,               # receive text/dict via UDP multicast
+    render_text_overlay,       # draw text onto (T, H, W, C) tensors
+    apply_overlay_from_kwargs, # render_text_overlay reading from pipeline kwargs dict
+    normalize_input,           # list[Tensor] → (T, H, W, C) float32 [0,1]
+    tensor_to_pil,             # (H, W, C) tensor → PIL Image
+    PromptInjector,            # dedup-inject prompts to output dict
+    OverlayMixin,              # Pydantic mixin: overlay appearance fields for schemas
+    FontFamily,                # Enum: arial | courier | times | helvetica
+    TextPosition,              # Enum: top-left | top-center | bottom-left | bottom-center
 )
 ```
 
-**UDPSender** — multicast sender with debounced port changes:
+**UDPSender** — multicast sender with debounced port changes. Accepts strings or dicts (serialised as JSON):
 ```python
 sender = UDPSender(port=9400)
-sender.send("a sunset over mountains")
+sender.send("a sunset over mountains")          # plain text
+sender.send({"prompt": "...", "response": "..."})  # JSON dict
 sender.update_port(9401)  # debounced 3s — call every frame, applies after stable
 ```
 
-**UDPReceiver** — multicast receiver, non-blocking poll:
+**UDPReceiver** — multicast receiver, non-blocking poll. Auto-parses JSON:
 ```python
 receiver = UDPReceiver(port=9400)
-msg = receiver.poll()  # returns latest message or None
+msg = receiver.poll()  # str, dict (if JSON), or None
 ```
 
 **render_text_overlay** — composites text onto video frames:
@@ -85,11 +207,18 @@ frames = render_text_overlay(
 )
 ```
 
-**PromptInjector** — appends prompts only when text changes:
+**PromptInjector** — injects prompts only when text changes. Supports instant or smooth transitions:
 ```python
 injector = PromptInjector()
+
+# Instant change (default)
 injector.inject_if_new(output, text="a cat on a couch", weight=100.0)
-# output["prompts"] is created/appended only when text differs from last call
+# output["prompts"] is set only when text differs from last call
+
+# Smooth temporal blend (uses Scope's transition API)
+injector.inject_if_new(output, text="a stormy sea", weight=100.0,
+                       transition_steps=10, interpolation_method="slerp")
+# output["transition"] is set with target_prompts + num_steps
 ```
 
 **normalize_input** — converts Scope's raw video list to a usable tensor:
@@ -134,110 +263,6 @@ if llm.should_send(interval=5.0):
     )
 response = llm.get_last_response()
 ```
-
----
-
-## Plugins
-
-### scope-vlm-ollama
-
-Queries an Ollama vision model on live video. Available as three variants:
-
-| Pipeline | Role | Description |
-|---|---|---|
-| **VLM Ollama** | Main | Query VLM + overlay response + inject prompt |
-| **VLM Ollama (Pre)** | Preprocessor | Query VLM + inject prompt + broadcast via UDP |
-| **VLM Ollama (Post)** | Postprocessor | Receive UDP text + overlay on AI output |
-
-**Typical chain:** `[VLM Pre] → [AI Model] → [VLM Post]`
-
-The Pre queries the raw camera; the Post overlays the description on the AI-processed output.
-
-**Key settings:**
-- `ollama_url` / `ollama_model` — load-time connection config
-- `vlm_prompt` — question sent to the VLM with each frame
-- `send_interval` — seconds between VLM queries (VLM is slow; 3–10s typical)
-- `inject_prompt` / `prompt_weight` — whether to use the VLM response as a diffusion prompt
-- `udp_port` — channel for Pre→Post communication
-
----
-
-### scope-llm-ollama
-
-Sends text to an Ollama LLM and injects the response as a diffusion prompt.
-
-**Role:** Preprocessor
-
-**Use case:** Transform a simple input phrase into an elaborate scene description, style directive, or creative prompt. Works well chained before any image generation model.
-
-**Key settings:**
-- `system_prompt` — LLM personality / rewriting instruction
-- `input_prompt` — the text fed to the LLM each interval
-- `send_interval` — query frequency
-- `inject_prompt` — send LLM response downstream as a diffusion prompt
-- `udp_enabled` / `udp_port` — optionally broadcast LLM response to other plugins
-
----
-
-### scope-udp-prompt
-
-Receives text via UDP and injects it as a diffusion prompt.
-
-**Role:** Preprocessor
-
-**Use case:** Bridge any external application into Scope's prompt chain. Send prompts from a Python script, a custom controller, OSC bridge, or any other tool that can send UDP packets.
-
-**Key settings:**
-- `udp_port` — channel to listen on (load-time)
-- `prompt_weight` — weight of injected prompt
-- `overlay_enabled` — show received text on video (yellow, top-left) for monitoring
-
-**Sending from Python:**
-```python
-import socket, struct
-
-MULTICAST_GROUP = "239.255.42.99"
-PORT = 9400
-
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 1)
-sock.sendto("a moonlit forest, painterly".encode(), (MULTICAST_GROUP, PORT))
-```
-
----
-
-### scope-test-text-generator
-
-Test plugin that sends a rolling frame counter via UDP. Use this to verify that a receiver (Text Log, UDP Prompt) is working before connecting a real sender.
-
-**Role:** Main pipeline + Pre/Post variant
-**Output:** `frame #N | ts=HH:MM:SS` every 2 seconds
-
----
-
-### scope-test-text-log
-
-Debug postprocessor that overlays all pipeline kwargs on the video and prints them to stdout. Shows video shape, prompts, UDP messages, and any extra kwargs flowing through the chain.
-
-**Role:** Postprocessor
-**Use case:** Drop this at the end of any chain to inspect exactly what's flowing between stages.
-
----
-
-## Installation Order
-
-Dependencies must be installed before the plugins that use them:
-
-
-Via Scope UI (installs into the correct venv):
-1. scope-bus
-2. scope-language
-3. scope-vlm-ollama, scope-llm-ollama, scope-udp-prompt
-4. scope-test-text-generator, scope-test-text-log
-
-
-
-After installing `scope-bus` and `scope-language`, they appear in the Scope UI pipeline list as passthrough pipelines. This confirms installation and allows uninstalling via the UI.
 
 ---
 

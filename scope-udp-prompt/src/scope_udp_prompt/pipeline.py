@@ -5,14 +5,15 @@ from typing import TYPE_CHECKING
 import torch
 
 from scope.core.pipelines.interface import Pipeline, Requirements
-from scope_bus import UDPReceiver, normalize_input, render_text_overlay
+from scope_bus import PromptInjector, UDPReceiver, normalize_input, render_text_overlay
 
 from .schema import UDPPromptConfig
 
 if TYPE_CHECKING:
     from scope.core.pipelines.base_schema import BasePipelineConfig
 
-_OWN_KEYS = {"udp_port", "prompt_weight", "overlay_enabled", "font_size", "text_opacity", "bg_opacity"}
+_OWN_KEYS = {"udp_port", "prompt_weight", "transition_steps", "interpolation_method",
+             "overlay_enabled", "font_size", "text_opacity", "bg_opacity"}
 
 
 class UDPPromptPipeline(Pipeline):
@@ -30,6 +31,7 @@ class UDPPromptPipeline(Pipeline):
         )
         self._last_text: str = ""
         self._udp = UDPReceiver(port=kwargs.get("udp_port", 9400))
+        self._prompt = PromptInjector()
 
     def prepare(self, **kwargs) -> Requirements:
         return Requirements(input_size=1)
@@ -43,7 +45,7 @@ class UDPPromptPipeline(Pipeline):
 
         msg = self._udp.poll()
         if msg is not None:
-            self._last_text = msg
+            self._last_text = msg if isinstance(msg, str) else str(msg)
 
         # Overlay current text on video if enabled
         if kwargs.get("overlay_enabled", True) and self._last_text:
@@ -65,12 +67,14 @@ class UDPPromptPipeline(Pipeline):
             if key != "video" and key not in _OWN_KEYS:
                 output[key] = value
 
-        # Inject UDP text as prompt (appended to any existing prompts)
+        # Inject UDP text as prompt (with optional transition)
         if self._last_text:
-            weight = kwargs.get("prompt_weight", 100.0)
-            existing = list(output.get("prompts", []))
-            existing.append({"text": self._last_text, "weight": weight})
-            output["prompts"] = existing
+            self._prompt.inject_if_new(
+                output, self._last_text,
+                weight=kwargs.get("prompt_weight", 100.0),
+                transition_steps=kwargs.get("transition_steps", 0),
+                interpolation_method=kwargs.get("interpolation_method", "slerp"),
+            )
 
         return output
 

@@ -1,25 +1,12 @@
-from enum import Enum
+from typing import Literal
 
 from pydantic import Field
 
 from scope.core.pipelines.base_schema import BasePipelineConfig, ModeDefaults, UsageType, ui_field_config
+from scope_bus import OverlayMixin
 
 
-class FontFamily(str, Enum):
-    ARIAL = "arial"
-    COURIER = "courier"
-    TIMES = "times"
-    HELVETICA = "helvetica"
-
-
-class TextPosition(str, Enum):
-    TOP_LEFT = "top-left"
-    TOP_CENTER = "top-center"
-    BOTTOM_LEFT = "bottom-left"
-    BOTTOM_CENTER = "bottom-center"
-
-
-class LLMOllamaConfig(BasePipelineConfig):
+class LLMOllamaConfig(OverlayMixin):
     """Preprocessor: transforms text through an Ollama LLM and injects as prompt."""
 
     pipeline_id = "llm-ollama"
@@ -82,6 +69,18 @@ class LLMOllamaConfig(BasePipelineConfig):
         json_schema_extra=ui_field_config(order=21, label="Prompt Weight"),
     )
 
+    transition_steps: int = Field(
+        default=0, ge=0, le=30,
+        description="Frames to blend from the current prompt to the new one (0 = instant)",
+        json_schema_extra=ui_field_config(order=22, label="Transition Steps"),
+    )
+
+    interpolation_method: Literal["slerp", "linear"] = Field(
+        default="slerp",
+        description="Blending method for prompt transitions: slerp (smooth) or linear",
+        json_schema_extra=ui_field_config(order=23, label="Interpolation"),
+    )
+
     # --- UDP ---
 
     udp_enabled: bool = Field(
@@ -96,64 +95,11 @@ class LLMOllamaConfig(BasePipelineConfig):
         json_schema_extra=ui_field_config(order=31, label="UDP Port"),
     )
 
-    # --- Overlay ---
-
-    overlay_enabled: bool = Field(
-        default=True,
-        description="Overlay the LLM response text on the output video",
-        json_schema_extra=ui_field_config(order=40, label="Overlay Text"),
-    )
-
-    font_family: FontFamily = Field(
-        default=FontFamily.ARIAL,
-        description="Typeface for the overlay text",
-        json_schema_extra=ui_field_config(order=41, label="Font"),
-    )
-
-    font_size: int = Field(
-        default=24, ge=8, le=120,
-        description="Font size in pixels",
-        json_schema_extra=ui_field_config(order=42, label="Font Size"),
-    )
-
-    font_color_r: float = Field(
-        default=1.0, ge=0.0, le=1.0,
-        description="Text color — red channel",
-        json_schema_extra=ui_field_config(order=43, label="Color R"),
-    )
-
-    font_color_g: float = Field(
-        default=1.0, ge=0.0, le=1.0,
-        description="Text color — green channel",
-        json_schema_extra=ui_field_config(order=44, label="Color G"),
-    )
-
+    # OverlayMixin provides: overlay_enabled, font_family, font_size, font_color_r/g/b,
+    #                        text_opacity, text_position, word_wrap, bg_opacity (orders 15, 20-28)
+    # Override font_color_b default to give LLM responses a warm tone
     font_color_b: float = Field(
         default=0.7, ge=0.0, le=1.0,
         description="Text color — blue channel",
-        json_schema_extra=ui_field_config(order=45, label="Color B"),
-    )
-
-    text_opacity: float = Field(
-        default=1.0, ge=0.0, le=1.0,
-        description="Text transparency",
-        json_schema_extra=ui_field_config(order=46, label="Opacity"),
-    )
-
-    text_position: TextPosition = Field(
-        default=TextPosition.BOTTOM_LEFT,
-        description="Text placement",
-        json_schema_extra=ui_field_config(order=47, label="Position"),
-    )
-
-    word_wrap: bool = Field(
-        default=True,
-        description="Wrap long text to fit within the frame width",
-        json_schema_extra=ui_field_config(order=48, label="Word Wrap"),
-    )
-
-    bg_opacity: float = Field(
-        default=0.5, ge=0.0, le=1.0,
-        description="Background box transparency",
-        json_schema_extra=ui_field_config(order=49, label="BG Opacity"),
+        json_schema_extra=ui_field_config(order=24, label="Color B"),
     )

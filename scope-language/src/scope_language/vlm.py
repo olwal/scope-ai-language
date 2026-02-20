@@ -9,14 +9,15 @@ import threading
 import time
 from typing import Callable
 
-import httpx
 import torch
 from scope_bus import tensor_to_pil
+
+from ._base import _OllamaBase
 
 logger = logging.getLogger(__name__)
 
 
-class OllamaVLM:
+class OllamaVLM(_OllamaBase):
     """Async Ollama VLM client that queries a vision model in a background thread.
 
     Usage::
@@ -31,20 +32,7 @@ class OllamaVLM:
     """
 
     def __init__(self, url: str = "http://localhost:11434", model: str = "llava:7b") -> None:
-        self._url = url
-        self._model = model
-        self._client = httpx.Client(base_url=url, timeout=60.0)
-        self._last_response: str = ""
-        self._last_send_time: float = 0.0
-        self._pending: bool = False
-        self._lock = threading.Lock()
-        self._callback: Callable[[str], None] | None = None
-
-    def should_send(self, interval: float) -> bool:
-        """Check if enough time has elapsed since the last query."""
-        if self._pending:
-            return False
-        return (time.monotonic() - self._last_send_time) >= interval
+        super().__init__(url=url, model=model)
 
     def query_async(
         self,
@@ -91,12 +79,3 @@ class OllamaVLM:
             logger.exception("Failed to query Ollama VLM")
         finally:
             self._pending = False
-
-    def get_last_response(self) -> str:
-        """Return the most recent VLM response text."""
-        with self._lock:
-            return self._last_response
-
-    @property
-    def is_pending(self) -> bool:
-        return self._pending

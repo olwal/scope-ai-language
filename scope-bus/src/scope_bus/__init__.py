@@ -3,8 +3,9 @@
 from scope.core.plugins.hookspecs import hookimpl
 
 from .frames import normalize_input, tensor_to_pil
-from .overlay import render_text_overlay
+from .overlay import apply_overlay_from_kwargs, render_text_overlay
 from .prompt import PromptInjector
+from .schema import FontFamily, OverlayMixin, TextPosition
 from .udp import UDPReceiver, UDPSender
 
 
@@ -17,7 +18,11 @@ __all__ = [
     "UDPSender",
     "UDPReceiver",
     "render_text_overlay",
+    "apply_overlay_from_kwargs",
     "normalize_input",
     "tensor_to_pil",
     "PromptInjector",
+    "OverlayMixin",
+    "FontFamily",
+    "TextPosition",
 ]

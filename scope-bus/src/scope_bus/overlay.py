@@ -126,3 +126,30 @@ def render_text_overlay(
 
     result = frames * (1.0 - alpha) + rgb * alpha
     return result
+
+
+def apply_overlay_from_kwargs(
+    frames: torch.Tensor,
+    text: str,
+    kwargs: dict,
+) -> torch.Tensor:
+    """Render a text overlay using standard overlay parameters from a kwargs dict.
+
+    Reads: font_family, font_size, font_color_r/g/b, text_opacity,
+           text_position, word_wrap, bg_opacity.
+    """
+    return render_text_overlay(
+        frames,
+        text=text,
+        font_family=kwargs.get("font_family", "arial"),
+        font_size=kwargs.get("font_size", 24),
+        font_color=(
+            kwargs.get("font_color_r", 1.0),
+            kwargs.get("font_color_g", 1.0),
+            kwargs.get("font_color_b", 1.0),
+        ),
+        opacity=kwargs.get("text_opacity", 1.0),
+        position=kwargs.get("text_position", "bottom-left"),
+        word_wrap=kwargs.get("word_wrap", True),
+        bg_opacity=kwargs.get("bg_opacity", 0.5),
+    )

@@ -31,10 +31,18 @@ class UDPSender:
     def port(self) -> int:
         return self._port
 
-    def send(self, text: str) -> None:
-        """Broadcast a UTF-8 text message to all receivers on this port."""
+    def send(self, message: "str | dict") -> None:
+        """Broadcast a message to all receivers on this port.
+
+        Accepts a plain string or a dict (serialised as JSON).
+        """
+        import json
+        if isinstance(message, dict):
+            payload = json.dumps(message).encode("utf-8")
+        else:
+            payload = str(message).encode("utf-8")
         try:
-            self._sock.sendto(text.encode("utf-8"), (_MULTICAST_GROUP, self._port))
+            self._sock.sendto(payload, (_MULTICAST_GROUP, self._port))
         except Exception:
             logger.exception("UDP send failed")
 
@@ -87,13 +95,22 @@ class UDPReceiver:
         print(f"[UDP-RX] joined {_MULTICAST_GROUP}:{port}", flush=True)
         return sock
 
-    def poll(self) -> str | None:
-        """Drain the socket and return the latest message, or None."""
-        latest: str | None = None
+    def poll(self) -> "str | dict | None":
+        """Drain the socket and return the latest message, or None.
+
+        If the message is valid JSON, returns the parsed object (dict).
+        Otherwise returns the raw string.
+        """
+        import json
+        latest: "str | dict | None" = None
         while True:
             try:
                 data, _ = self._sock.recvfrom(65535)
-                latest = data.decode("utf-8", errors="replace")
+                text = data.decode("utf-8", errors="replace")
+                try:
+                    latest = json.loads(text)
+                except (json.JSONDecodeError, ValueError):
+                    latest = text
             except BlockingIOError:
                 break
         return latest

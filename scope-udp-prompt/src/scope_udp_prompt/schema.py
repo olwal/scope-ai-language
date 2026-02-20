@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import Field
 
 from scope.core.pipelines.base_schema import BasePipelineConfig, ModeDefaults, UsageType, ui_field_config
@@ -32,6 +34,18 @@ class UDPPromptConfig(BasePipelineConfig):
         le=200.0,
         description="Weight of the injected prompt",
         json_schema_extra=ui_field_config(order=2, label="Prompt Weight"),
+    )
+
+    transition_steps: int = Field(
+        default=0, ge=0, le=30,
+        description="Frames to blend from the current prompt to the new one (0 = instant)",
+        json_schema_extra=ui_field_config(order=3, label="Transition Steps"),
+    )
+
+    interpolation_method: Literal["slerp", "linear"] = Field(
+        default="slerp",
+        description="Blending method for prompt transitions: slerp (smooth) or linear",
+        json_schema_extra=ui_field_config(order=4, label="Interpolation"),
     )
 
     overlay_enabled: bool = Field(
