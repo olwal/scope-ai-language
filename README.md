@@ -2,6 +2,8 @@
 
 Generative AI plugins for language-driven, real-time video inference and generation. Ollama VLM/LLM pipelines and UDP prompt routing, built on shared libraries for communication and AI services (scope-bus, scope-language).
 
+https://github.com/user-attachments/assets/a8fc647c-5379-4b51-960e-5ce784035219
+
 ---
 
 ## Plugins
