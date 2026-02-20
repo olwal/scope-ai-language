@@ -46,6 +46,12 @@ class _VLMQueryMixin(BasePipelineConfig):
         json_schema_extra=ui_field_config(order=11, label="Send Interval"),
     )
 
+    prompt_settle_time: float = Field(
+        default=1.0, ge=0.0, le=5.0,
+        description="Seconds to wait after the prompt stops changing before using it (debounce for typing)",
+        json_schema_extra=ui_field_config(order=12, label="Prompt Settle Time"),
+    )
+
     # --- Output ---
 
     inject_prompt: bool = Field(

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from typing import TYPE_CHECKING
 
 import torch
@@ -12,6 +13,18 @@ from .schema import VLMOllamaConfig, VLMOllamaPostConfig, VLMOllamaPreConfig
 
 if TYPE_CHECKING:
     from scope.core.pipelines.base_schema import BasePipelineConfig
+
+_DEFAULT_PROMPT = "Describe what you see in this image in one sentence."
+
+
+def _settle_prompt(new_prompt: str, pending: str, active: str, changed_at: float, settle_time: float) -> tuple[str, str, float]:
+    """Debounce prompt changes. Returns (active_prompt, pending_prompt, changed_at)."""
+    now = time.monotonic()
+    if new_prompt != pending:
+        return active, new_prompt, now
+    if settle_time == 0.0 or (now - changed_at) >= settle_time:
+        return pending, pending, changed_at
+    return active, pending, changed_at
 
 
 # ---------------------------------------------------------------------------
@@ -35,6 +48,9 @@ class VLMOllamaPipeline(Pipeline):
             model=kwargs.get("ollama_model", "llava:7b"),
         )
         self._prompt = PromptInjector()
+        self._active_prompt: str = kwargs.get("vlm_prompt", _DEFAULT_PROMPT)
+        self._pending_prompt: str = self._active_prompt
+        self._prompt_changed_at: float = 0.0
 
     def prepare(self, **kwargs) -> Requirements:
         return Requirements(input_size=1)
@@ -46,12 +62,16 @@ class VLMOllamaPipeline(Pipeline):
 
         frames = normalize_input(video, self.device)
 
+        # Debounce prompt — wait until typing settles before sending to VLM
+        self._active_prompt, self._pending_prompt, self._prompt_changed_at = _settle_prompt(
+            kwargs.get("vlm_prompt", _DEFAULT_PROMPT),
+            self._pending_prompt, self._active_prompt, self._prompt_changed_at,
+            kwargs.get("prompt_settle_time", 1.0),
+        )
+
         interval = kwargs.get("send_interval", 3.0)
         if self._vlm.should_send(interval):
-            self._vlm.query_async(
-                frames[0],
-                prompt=kwargs.get("vlm_prompt", "Describe what you see in this image in one sentence."),
-            )
+            self._vlm.query_async(frames[0], prompt=self._active_prompt)
 
         response_text = self._vlm.get_last_response()
 
@@ -92,6 +112,9 @@ class VLMOllamaPrePipeline(Pipeline):
         self._udp = UDPSender(port=kwargs.get("udp_port", 9500))
         self._prompt = PromptInjector()
         self._last_sent_prompt: str = ""  # captured at query time for the UDP callback
+        self._active_prompt: str = kwargs.get("vlm_prompt", _DEFAULT_PROMPT)
+        self._pending_prompt: str = self._active_prompt
+        self._prompt_changed_at: float = 0.0
 
     def prepare(self, **kwargs) -> Requirements:
         return Requirements(input_size=1)
@@ -105,11 +128,16 @@ class VLMOllamaPrePipeline(Pipeline):
 
         frames = normalize_input(video, self.device)
 
+        # Debounce prompt — wait until typing settles before sending to VLM
+        self._active_prompt, self._pending_prompt, self._prompt_changed_at = _settle_prompt(
+            kwargs.get("vlm_prompt", _DEFAULT_PROMPT),
+            self._pending_prompt, self._active_prompt, self._prompt_changed_at,
+            kwargs.get("prompt_settle_time", 1.0),
+        )
+
         interval = kwargs.get("send_interval", 3.0)
         if self._vlm.should_send(interval):
-            self._last_sent_prompt = kwargs.get(
-                "vlm_prompt", "Describe what you see in this image in one sentence."
-            )
+            self._last_sent_prompt = self._active_prompt
             self._vlm.query_async(
                 frames[0],
                 prompt=self._last_sent_prompt,
