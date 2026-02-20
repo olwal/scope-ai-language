@@ -1,0 +1,16 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "scope-llm-ollama"
+version = "0.1.0"
+description = "Ollama LLM plugin: transforms text prompts through a language model"
+requires-python = ">=3.12"
+dependencies = ["scope-bus", "scope-language"]
+
+[project.entry-points."scope"]
+scope_llm_ollama = "scope_llm_ollama"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/scope_llm_ollama"]

@@ -1,0 +1,16 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "scope-bus"
+version = "0.1.0"
+description = "Shared transport, overlay, and utility library for Scope plugins"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.entry-points."scope"]
+scope_bus = "scope_bus"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/scope_bus"]

@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "scope-language"
+version = "0.1.0"
+description = "Ollama VLM and LLM clients for Scope plugins"
+requires-python = ">=3.12"
+dependencies = [
+    "httpx",
+    "scope-bus",
+]
+
+[project.entry-points."scope"]
+scope_language = "scope_language"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/scope_language"]
