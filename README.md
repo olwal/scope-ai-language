@@ -2,13 +2,31 @@
 
 Real-time AI plugins that close the loop between **seeing** and **generating** — the system watches live video, reasons about what it sees, and continuously steers the AI image generation based on that understanding.
 
-A vision language model (VLM) observes the raw camera feed and produces semantic descriptions: the mood of a crowd, the species of an animal, the weather in a landscape, the emotional tone of a scene. Those descriptions feed directly into a large language model (LLM), which rewrites them as rich diffusion prompts, which in turn shape what the AI generates — frame by frame, in real time.
+A vision language model (VLM) observes the raw camera feed and produces semantic descriptions: the mood of a crowd, the species of an animal, the weather in a landscape, the emotional tone of a scene. Those descriptions feed into a large language model (LLM), which can rewrite them as rich diffusion prompts — which in turn shape what the AI generates, frame by frame, in real time.
 
-**Example:** Point the camera at a cat. Ask the VLM *"what are the natural predators of what you see?"* — it answers *"eagles, foxes, coyotes"*. That response becomes the live diffusion prompt. The AI no longer renders a cat; it renders whatever is hunting it, morphing dynamically as the VLM's answers evolve.
+**Example:** Point the camera at a cat. Ask the VLM *"what are the natural predators of what you see?"* — it answers *"eagles, foxes, coyotes"*. That response becomes the live diffusion prompt. The AI no longer renders a cat; it renders whatever is hunting it, morphing dynamically as the VLM's answers evolve with each new frame.
 
-The generation doesn't follow a fixed script — it follows the scene. Prompt state changes smoothly via temporal interpolation between semantic states rather than cutting abruptly between them. Multiple plugins can run in parallel, chained, or controlled from external tools (OSC, UDP) for live performance and installation contexts.
+The generation doesn't follow a fixed script — it follows the scene. Prompt state changes smoothly via temporal interpolation rather than cutting abruptly between semantic states. Multiple plugins can run in parallel, chained, or driven from external tools (OSC, UDP) for live performance and installation contexts.
 
-Built on [Ollama](https://ollama.com) for local/remote VLM and LLM inference, with shared libraries for transport, rendering, and prompt routing (scope-bus, scope-language).
+### How it works
+
+The plugins slot into Daydream Scope's preprocessor / postprocessor pipeline architecture. A typical split chain:
+
+```
+Camera → [VLM Pre] ──────────────────────► [AI Model] → [VLM Post] → Output
+               │ UDP multicast 239.255.42.99       ▲
+               └──► [UDP Prompt] ─── prompts ──────┘
+```
+
+- **scope-vlm-ollama** queries an Ollama vision model on each frame at a configurable interval. Runs as a preprocessor (queries the raw feed, injects the VLM response as a diffusion prompt and broadcasts it via UDP), a postprocessor (receives the UDP text and overlays it on the AI output), or as a combined main pipeline.
+- **scope-llm-ollama** sends text to an Ollama LLM and injects the rewritten response as a diffusion prompt. Use it to transform a short observation into an elaborate scene description, style directive, or creative prompt.
+- **scope-udp-prompt** / **scope-osc-prompt** receive prompts from any external source via UDP multicast or OSC and inject them into the pipeline — bridging Python scripts, TouchDesigner, Ableton Live, Max/MSP, or any custom controller.
+
+Semantic responses are broadcast over **UDP multicast** so any number of downstream plugins receive them simultaneously — fan-out with no additional routing. The port number acts as a channel: any plugin listening on the same port gets every message.
+
+Prompt transitions use **temporal interpolation** (slerp or linear) to blend smoothly between semantic states over a configurable number of frames, rather than snapping abruptly when the VLM's description changes.
+
+Built on [Ollama](https://ollama.com) for local or remote VLM/LLM inference. Shared libraries handle all transport, frame conversion, text rendering, and prompt injection (scope-bus, scope-language), so each plugin stays focused on its single role in the chain.
 
 https://github.com/user-attachments/assets/a8fc647c-5379-4b51-960e-5ce784035219
 
