@@ -123,6 +123,76 @@ After installing `scope-bus` and `scope-language`, they appear in the Scope UI p
 
 ---
 
+## RunPod Deployment
+
+### Daydream Scope Pod
+
+Tested configuration for running Daydream Scope on RunPod:
+
+| Setting | Value |
+|---|---|
+| GPU | RTX PRO 6000 (1×) |
+| vCPU / Memory | 16 vCPU / 188 GB |
+| Container disk | 20 GB |
+| Network volume | 80 GB (`daydream_scope`, mounted at `/workspace`) |
+| On-demand price | ~$1.69/hr compute + $0.003/hr storage |
+| Base template | [daydream-scope](https://console.runpod.io/hub/template/daydream-scope?id=aca8mw9ivw) (`aca8mw9ivw`) |
+
+The network volume at `/workspace` persists across pod restarts — use it for model weights and checkpoints.
+
+### Split-Instance Architecture (Recommended)
+
+Ollama VLM/LLM queries are slow (1–5s each) and run in background threads, so Ollama doesn't need to share the GPU with diffusion inference. Running Ollama on a separate, cheaper pod frees the main GPU for full-speed diffusion:
+
+```
+[Scope pod: RTX PRO 6000]          [Ollama pod: CPU-only or cheapest GPU]
+  StreamDiffusion / other models       ollama serve
+  scope-vlm-ollama (pre/post)   ──►   http://<ollama-pod-ip>:11434
+  scope-llm-ollama
+```
+
+In each VLM/LLM plugin, set `ollama_url` (load-time) to the Ollama pod's public IP:
+```
+http://213.x.x.x:11434
+```
+
+RunPod exposes port 11434 via the pod's public IP when you add it under **Expose TCP Ports** in the pod settings.
+
+### Ollama Pod Setup
+
+For the Ollama-only pod, use the cheapest CPU pod (or any GPU pod). Paste this as the **Container Start Command** when creating the pod or template:
+
+```sh
+apt-get -y install zstd lshw && \
+curl -fsSL https://ollama.com/install.sh | sh && \
+ollama pull qwen3-vl:2b && \
+ollama serve
+```
+
+This installs Ollama, pulls the model, and starts the server. The model is downloaded on first boot — subsequent restarts skip the pull if the model is cached on a network volume.
+
+**Recommended model:** `qwen3-vl:2b` — fast, small, capable vision model. For higher quality at the cost of speed: `llava:7b` or `llava:13b`.
+
+### Creating a RunPod Template
+
+To save this as a reusable template in the RunPod console:
+
+1. Go to **Manage → Templates → New Template**
+2. Set **Container Image** to any base image with CUDA or a plain Ubuntu image (e.g. `runpod/base:0.4.0-cuda11.8.0`)
+3. Under **Container Start Command**, paste the Ollama install script above
+4. Under **Expose TCP Ports**, add `11434` (Ollama API)
+5. Set **Container Disk** to 5–10 GB (Ollama binary + small model overhead if no volume)
+6. Optionally attach a **Network Volume** at `/root/.ollama` to cache pulled models across restarts
+7. Save as private template — it will appear in your pod creation flow
+
+For the network volume approach, change the pull line to check first:
+```sh
+ollama pull qwen3-vl:2b 2>/dev/null || true
+```
+So re-pulling an already-cached model is a no-op.
+
+---
+
 ## Architecture
 
 ```
