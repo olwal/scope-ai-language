@@ -23,6 +23,7 @@ class UDPSender:
         self._port = port
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         self._sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, _MULTICAST_TTL)
+        self._sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_LOOP, 1)
         self._pending_port: int | None = None
         self._port_changed_at: float = 0.0
         print(f"[UDP-TX] ready → {_MULTICAST_GROUP}:{port}", flush=True)
