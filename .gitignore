@@ -37,3 +37,6 @@ htmlcov/
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Claude Code
+CLAUDE.md
