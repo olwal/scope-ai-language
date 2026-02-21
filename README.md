@@ -1,6 +1,14 @@
 # AI Language Plugins for Daydream Scope
 
-Generative AI plugins for language-driven, real-time video inference and generation. Ollama VLM/LLM pipelines and UDP prompt routing, built on shared libraries for communication and AI services (scope-bus, scope-language).
+Real-time AI plugins that close the loop between **seeing** and **generating** — the system watches live video, reasons about what it sees, and continuously steers the AI image generation based on that understanding.
+
+A vision language model (VLM) observes the raw camera feed and produces semantic descriptions: the mood of a crowd, the species of an animal, the weather in a landscape, the emotional tone of a scene. Those descriptions feed directly into a large language model (LLM), which rewrites them as rich diffusion prompts, which in turn shape what the AI generates — frame by frame, in real time.
+
+**Example:** Point the camera at a cat. Ask the VLM *"what are the natural predators of what you see?"* — it answers *"eagles, foxes, coyotes"*. That response becomes the live diffusion prompt. The AI no longer renders a cat; it renders whatever is hunting it, morphing dynamically as the VLM's answers evolve.
+
+The generation doesn't follow a fixed script — it follows the scene. Prompt state changes smoothly via temporal interpolation between semantic states rather than cutting abruptly between them. Multiple plugins can run in parallel, chained, or controlled from external tools (OSC, UDP) for live performance and installation contexts.
+
+Built on [Ollama](https://ollama.com) for local/remote VLM and LLM inference, with shared libraries for transport, rendering, and prompt routing (scope-bus, scope-language).
 
 https://github.com/user-attachments/assets/a8fc647c-5379-4b51-960e-5ce784035219
 
