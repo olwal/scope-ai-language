@@ -63,14 +63,16 @@ class VLMOllamaPipeline(Pipeline):
         frames = normalize_input(video, self.device)
 
         # Debounce prompt — wait until typing settles before sending to VLM
+        prev_active = self._active_prompt
         self._active_prompt, self._pending_prompt, self._prompt_changed_at = _settle_prompt(
             kwargs.get("vlm_prompt", _DEFAULT_PROMPT),
             self._pending_prompt, self._active_prompt, self._prompt_changed_at,
             kwargs.get("prompt_settle_time", 1.0),
         )
+        prompt_just_settled = prev_active != self._active_prompt
 
         interval = kwargs.get("send_interval", 3.0)
-        if self._vlm.should_send(interval):
+        if self._vlm.should_send(interval) or (prompt_just_settled and not self._vlm.is_pending):
             self._vlm.query_async(frames[0], prompt=self._active_prompt)
 
         response_text = self._vlm.get_last_response()
@@ -129,14 +131,16 @@ class VLMOllamaPrePipeline(Pipeline):
         frames = normalize_input(video, self.device)
 
         # Debounce prompt — wait until typing settles before sending to VLM
+        prev_active = self._active_prompt
         self._active_prompt, self._pending_prompt, self._prompt_changed_at = _settle_prompt(
             kwargs.get("vlm_prompt", _DEFAULT_PROMPT),
             self._pending_prompt, self._active_prompt, self._prompt_changed_at,
             kwargs.get("prompt_settle_time", 1.0),
         )
+        prompt_just_settled = prev_active != self._active_prompt
 
         interval = kwargs.get("send_interval", 3.0)
-        if self._vlm.should_send(interval):
+        if self._vlm.should_send(interval) or (prompt_just_settled and not self._vlm.is_pending):
             self._last_sent_prompt = self._active_prompt
             self._vlm.query_async(
                 frames[0],
