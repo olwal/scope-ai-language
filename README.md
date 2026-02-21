@@ -163,13 +163,17 @@ RunPod exposes port 11434 via the pod's public IP when you add it under **Expose
 For the Ollama-only pod, use the cheapest CPU pod (or any GPU pod). Paste this as the **Container Start Command** when creating the pod or template:
 
 ```sh
-apt-get -y install zstd lshw && \
-curl -fsSL https://ollama.com/install.sh | sh && \
-ollama pull qwen3-vl:2b && \
-ollama serve
+curl -fsSL https://raw.githubusercontent.com/olwal/scope-ai-language/main/scripts/setup-ollama-pod.sh | sh
 ```
 
-This installs Ollama, pulls the model, and starts the server. The model is downloaded on first boot — subsequent restarts skip the pull if the model is cached on a network volume.
+This installs Ollama, pulls `qwen3-vl:2b`, and starts the server bound to `0.0.0.0:11434`. `OLLAMA_HOST=0.0.0.0` is required so Ollama is reachable via RunPod's TCP port forwarding — without it, Ollama only listens on `127.0.0.1`.
+
+To use a different model, set the `OLLAMA_MODEL` environment variable on the pod before running the script, or add it inline:
+```sh
+OLLAMA_MODEL=llava:7b curl -fsSL https://raw.githubusercontent.com/olwal/scope-ai-language/main/scripts/setup-ollama-pod.sh | sh
+```
+
+The model is downloaded on first boot — subsequent restarts skip the pull if the model is cached on a network volume.
 
 **Recommended model:** `qwen3-vl:2b` — fast, small, capable vision model. For higher quality at the cost of speed: `llava:7b` or `llava:13b`.
 
