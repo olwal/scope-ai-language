@@ -8,6 +8,8 @@ A vision language model (VLM) observes the raw camera feed and produces semantic
 
 The generation doesn't follow a fixed script — it follows the scene. Prompt state changes smoothly via temporal interpolation rather than cutting abruptly between semantic states. Multiple plugins can run in parallel, chained, or driven from external tools (OSC, UDP) for live performance and installation contexts.
 
+https://github.com/user-attachments/assets/7465733a-3bcc-40a2-8b04-6236c3188233
+
 ### How it works
 
 The plugins slot into Daydream Scope's preprocessor / postprocessor pipeline architecture. A typical split chain:
@@ -28,7 +30,7 @@ Prompt transitions use **temporal interpolation** (slerp or linear) to blend smo
 
 Built on [Ollama](https://ollama.com) for local or remote VLM/LLM inference. Shared libraries handle all transport, frame conversion, text rendering, and prompt injection (scope-bus, scope-language), so each plugin stays focused on its single role in the chain.
 
-https://github.com/user-attachments/assets/a8fc647c-5379-4b51-960e-5ce784035219
+<!-- https://github.com/user-attachments/assets/a8fc647c-5379-4b51-960e-5ce784035219 -->
 
 ---
 
