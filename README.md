@@ -10,6 +10,17 @@ The generation doesn't follow a fixed script — it follows the scene. Prompt st
 
 https://github.com/user-attachments/assets/7465733a-3bcc-40a2-8b04-6236c3188233
 
+### Try it out 
+
+- [Test server](https://kfmxyhf42kysxr-8000.proxy.runpod.net/)
+- Pipeline ID: **streamdiffusionv2**
+- Preprocessor: **vlm-ollama-pre**
+  - Ollama URL: **157.157.221.29:23058**
+  - Model: **llava:7b**
+- Postprocessor: **vlm-ollama-post**
+
+<img width="3738" height="1454" alt="image" src="https://github.com/user-attachments/assets/bfdc4b2f-3271-4cbb-92b4-42ce4dac6d6c" />
+
 ### How it works
 
 The plugins slot into Daydream Scope's preprocessor / postprocessor pipeline architecture. A typical split chain:
