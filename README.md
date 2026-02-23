@@ -15,7 +15,7 @@ https://github.com/user-attachments/assets/7465733a-3bcc-40a2-8b04-6236c3188233
 - [Test server](https://kfmxyhf42kysxr-8000.proxy.runpod.net/)
 - Pipeline ID: **streamdiffusionv2**
 - Preprocessor: **vlm-ollama-pre**
-  - Ollama URL: **157.157.221.29:23058**
+  - Ollama URL: **http://157.157.221.29:23058**
   - Model: **llava:7b**
 - Postprocessor: **vlm-ollama-post**
 
