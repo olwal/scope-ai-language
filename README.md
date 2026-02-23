@@ -1,12 +1,23 @@
 # AI Language Plugins for Daydream Scope
 
-Real-time AI plugins that close the loop between **seeing** and **generating** — the system watches live video, reasons about what it sees, and continuously steers the AI image generation based on that understanding.
+Real-time AI plugins that close the loop between **seeing** and **generating**. The system watches a video stream, reasons about what it sees in real-time, and continuously steers the AI image generation based on that understanding.
 
-A vision language model (VLM) observes the raw camera feed and produces semantic descriptions: the mood of a crowd, the species of an animal, the weather in a landscape, the emotional tone of a scene. Those descriptions feed into a large language model (LLM), which can rewrite them as rich diffusion prompts — which in turn shape what the AI generates, frame by frame, in real time.
+A vision language model (VLM) produces semantic descriptions: the mood of a crowd, the species of an animal, the weather in a landscape, the emotional tone of a scene. Those descriptions can optionally feed into a second preprocessor with large language model (LLM), which can rewrite them as rich diffusion prompts, which helps shape what the AI generates, frame by frame, in real time.
 
-**Example:** Point the camera at a cat. Ask the VLM *"what are the natural predators of what you see?"* — it answers *"eagles, foxes, coyotes"*. That response becomes the live diffusion prompt. The AI no longer renders a cat; it renders whatever is hunting it, morphing dynamically as the VLM's answers evolve with each new frame.
+## Advanced semantic reasoning about content
 
-The generation doesn't follow a fixed script — it follows the scene. Prompt state changes smoothly via temporal interpolation rather than cutting abruptly between semantic states. Multiple plugins can run in parallel, chained, or driven from external tools (OSC, UDP) for live performance and installation contexts.
+**Example:** Point the camera at a cat. Ask the VLM *"what are the natural predators of what you see in three words?"*. It answers *"eagles, foxes, coyotes"*. That response becomes the live diffusion prompt. The AI no longer renders a cat; it renders whatever is hunting it, morphing dynamically as the VLM's answers evolve with each new inference.
+
+The generation doesn't follow a fixed script. It follows the scene. Prompt state changes smoothly via temporal interpolation rather than cutting abruptly between semantic states. Multiple plugins can run in parallel, chained, or driven from external tools (OSC, UDP) for live performance and installation contexts.
+
+<img width="300" height="299" alt="image" src="https://github.com/user-attachments/assets/d309e260-dd95-4156-b311-b4ebd692d3ca" />
+
+<img width="300" height="302" alt="image" src="https://github.com/user-attachments/assets/4a3d702d-2261-4298-b8d6-188ded3d1e9e" />
+
+
+## Live completion to steer streaming video generation
+
+**Example** By drawing live into the feed (e.g., using local Spout streaming), the VLM can be used to drive a visual auto-complete. While initial strokes are ambigious, with more detail, the VLM inference starts to converge and provide increasingly accurate interpretations. Those are directly fed into the live video generation, serving as both a live autocomplete, but also as a means to create animated drawings. 
 
 https://github.com/user-attachments/assets/7465733a-3bcc-40a2-8b04-6236c3188233
 
