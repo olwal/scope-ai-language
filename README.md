@@ -1,3 +1,7 @@
+-+= Update 26 Feb 2026 | AI Language wins top prize in Daydream Scope Plugin contest! =+-
+
+<img width="1200" height="454" alt="ai_language_winner_3" src="https://github.com/user-attachments/assets/63cd1fa2-9b99-4f9a-a778-446ac87c4d38" />
+
 # AI Language Plugins for Daydream Scope
 
 Real-time AI plugins that close the loop between **seeing** and **generating**. The system watches a video stream, reasons about what it sees in real-time, and continuously steers the AI image generation based on that understanding.
@@ -5,10 +9,6 @@ Real-time AI plugins that close the loop between **seeing** and **generating**. 
 A vision language model (VLM) produces semantic descriptions: the mood of a crowd, the species of an animal, the weather in a landscape, the emotional tone of a scene. Those descriptions can optionally feed into a second preprocessor with large language model (LLM), which can rewrite them as rich diffusion prompts, which helps shape what the AI generates, frame by frame, in real time.
 
 https://github.com/user-attachments/assets/aede2dd5-18de-4b4f-824d-652cc8868d8b
-
-## *** 2026 Feb 25 | AI Language wins top prize in Daydream Scope Plugin contest! ***
-
-<img width="1200" height="454" alt="ai_language_winner_3" src="https://github.com/user-attachments/assets/63cd1fa2-9b99-4f9a-a778-446ac87c4d38" />
 
 ## Advanced semantic reasoning about content
 
