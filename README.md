@@ -25,6 +25,7 @@ https://github.com/user-attachments/assets/7465733a-3bcc-40a2-8b04-6236c3188233
 
 - [Test server A: RTX PRO 4050](https://ts00jrrbku1jcg-8000.proxy.runpod.net/)
 - [Test server B: RTX PRO 6000](https://kfmxyhf42kysxr-8000.proxy.runpod.net/)
+- [Test server C: RTX PRO 6000, latest](https://ra0yrz3k6vjdec-8000.proxy.runpod.net/)
 - Pipeline ID: **streamdiffusionv2**
 - Preprocessor: **vlm-ollama-pre**
   - Ollama URL: **http://157.157.221.29:23058**
