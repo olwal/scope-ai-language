@@ -6,13 +6,7 @@ A vision language model (VLM) produces semantic descriptions: the mood of a crow
 
 https://github.com/user-attachments/assets/aede2dd5-18de-4b4f-824d-652cc8868d8b
 
-https://github.com/user-attachments/assets/971cefb0-7f5e-4ff1-b9be-901abef0007f
-
-https://github.com/user-attachments/assets/6420a48f-e79a-4bd5-b27e-d157d0630fea
-
-https://github.com/user-attachments/assets/64e358d1-bd78-4d66-8aae-76654bd9ca1d
-
-https://github.com/user-attachments/assets/2c34cb2e-01bb-4911-81c7-f61c89f56e3e
+<img width="1200" height="454" alt="ai_language_winner_3" src="https://github.com/user-attachments/assets/63cd1fa2-9b99-4f9a-a778-446ac87c4d38" />
 
 ## Advanced semantic reasoning about content
 
@@ -63,6 +57,14 @@ Semantic responses are broadcast over **UDP multicast** so any number of downstr
 Prompt transitions use **temporal interpolation** (slerp or linear) to blend smoothly between semantic states over a configurable number of frames, rather than snapping abruptly when the VLM's description changes.
 
 Built on [Ollama](https://ollama.com) for local or remote VLM/LLM inference. Shared libraries handle all transport, frame conversion, text rendering, and prompt injection (scope-bus, scope-language), so each plugin stays focused on its single role in the chain.
+
+https://github.com/user-attachments/assets/971cefb0-7f5e-4ff1-b9be-901abef0007f
+
+https://github.com/user-attachments/assets/6420a48f-e79a-4bd5-b27e-d157d0630fea
+
+https://github.com/user-attachments/assets/64e358d1-bd78-4d66-8aae-76654bd9ca1d
+
+https://github.com/user-attachments/assets/2c34cb2e-01bb-4911-81c7-f61c89f56e3e
 
 https://github.com/user-attachments/assets/a8fc647c-5379-4b51-960e-5ce784035219
 
