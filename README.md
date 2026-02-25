@@ -4,6 +4,16 @@ Real-time AI plugins that close the loop between **seeing** and **generating**. 
 
 A vision language model (VLM) produces semantic descriptions: the mood of a crowd, the species of an animal, the weather in a landscape, the emotional tone of a scene. Those descriptions can optionally feed into a second preprocessor with large language model (LLM), which can rewrite them as rich diffusion prompts, which helps shape what the AI generates, frame by frame, in real time.
 
+https://github.com/user-attachments/assets/aede2dd5-18de-4b4f-824d-652cc8868d8b
+
+https://github.com/user-attachments/assets/971cefb0-7f5e-4ff1-b9be-901abef0007f
+
+https://github.com/user-attachments/assets/6420a48f-e79a-4bd5-b27e-d157d0630fea
+
+https://github.com/user-attachments/assets/64e358d1-bd78-4d66-8aae-76654bd9ca1d
+
+https://github.com/user-attachments/assets/2c34cb2e-01bb-4911-81c7-f61c89f56e3e
+
 ## Advanced semantic reasoning about content
 
 **Example:** Point the camera at a cat. Ask the VLM *"what are the natural predators of what you see in three words?"*. It answers *"eagles, foxes, coyotes"*. That response becomes the live diffusion prompt. The AI no longer renders a cat; it renders whatever is hunting it, morphing dynamically as the VLM's answers evolve with each new inference.
