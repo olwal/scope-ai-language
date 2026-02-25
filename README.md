@@ -6,6 +6,8 @@ A vision language model (VLM) produces semantic descriptions: the mood of a crow
 
 https://github.com/user-attachments/assets/aede2dd5-18de-4b4f-824d-652cc8868d8b
 
+## *** 2026 Feb 25 | AI Language wins top prize in Daydream Scope Plugin contest! ***
+
 <img width="1200" height="454" alt="ai_language_winner_3" src="https://github.com/user-attachments/assets/63cd1fa2-9b99-4f9a-a778-446ac87c4d38" />
 
 ## Advanced semantic reasoning about content
