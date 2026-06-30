@@ -42,8 +42,7 @@ Prompt transitions use **temporal interpolation** (slerp or linear) to blend smo
 
 Built on [Ollama](https://ollama.com) for local or remote VLM/LLM inference. Shared libraries handle all transport, frame conversion, text rendering, and prompt injection ([scope-bus](scope-bus/README.md), [scope-language](scope-language/README.md)), so each plugin stays focused on its single role in the chain.
 
-<details>
-<summary>More examples</summary>
+### More examples
 
 https://github.com/user-attachments/assets/971cefb0-7f5e-4ff1-b9be-901abef0007f
 
@@ -54,8 +53,6 @@ https://github.com/user-attachments/assets/64e358d1-bd78-4d66-8aae-76654bd9ca1d
 https://github.com/user-attachments/assets/2c34cb2e-01bb-4911-81c7-f61c89f56e3e
 
 https://github.com/user-attachments/assets/a8fc647c-5379-4b51-960e-5ce784035219
-
-</details>
 
 ---
 
